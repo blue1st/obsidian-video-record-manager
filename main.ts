@@ -1566,13 +1566,10 @@ export default class VideoRecordManager extends Plugin {
             this.app.workspace.on("file-menu", (menu, file) => {
                 if (!(file instanceof TFile) || !file.path.endsWith(".md")) return;
 
-                const cache = this.app.metadataCache.getFileCache(file);
-                const frontmatter = cache?.frontmatter;
                 const isInVideosFolder = file.path.startsWith("Videos/");
-                const hasStatus = frontmatter && "status" in frontmatter;
 
-                // Only show for markdown files inside Videos/ folder or with a valid status frontmatter
-                if (isInVideosFolder || hasStatus) {
+                // Only show for markdown files inside Videos/ folder
+                if (isInVideosFolder) {
                     menu.addItem((item) => {
                         item
                             .setTitle("Toggle Video Status")
