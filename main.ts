@@ -3,11 +3,13 @@ import { Plugin, Modal, Notice, TFile, App, PluginSettingTab, Setting, ItemView,
 interface VideoRecordManagerSettings {
     enableHideWatched: boolean;
     hideWatchedDays: number;
+    enableAutoUpdate: boolean;
 }
 
 const DEFAULT_SETTINGS: VideoRecordManagerSettings = {
     enableHideWatched: true,
-    hideWatchedDays: 7
+    hideWatchedDays: 7,
+    enableAutoUpdate: true
 };
 
 // Helper to format Date as "YYYY-MM-DD"
@@ -1597,6 +1599,7 @@ export default class VideoRecordManager extends Plugin {
         // 7. Background Event: Sync dashboard when metadata cache changes
         this.registerEvent(
             this.app.metadataCache.on("changed", async (file) => {
+                if (!this.settings.enableAutoUpdate) return;
                 if (file.path === "Videos/Master Video List.md") return;
                 const isInVideosFolder = file.path.startsWith("Videos/");
                 const cache = this.app.metadataCache.getFileCache(file);
@@ -2317,6 +2320,16 @@ class VideoRecordManagerSettingTab extends PluginSettingTab {
                         this.plugin.settings.hideWatchedDays = parsed;
                         await this.plugin.saveSettings();
                     }
+                }));
+
+        new Setting(containerEl)
+            .setName("Auto-update Master List on File Changes (ファイル変更時に自動更新)")
+            .setDesc("Automatically rebuild the Master Video List when a video's properties are changed in the background. Disable this to prevent Syncthing sync-conflicts.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAutoUpdate)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableAutoUpdate = value;
+                    await this.plugin.saveSettings();
                 }));
     }
 }
