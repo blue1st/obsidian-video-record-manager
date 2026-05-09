@@ -268,6 +268,7 @@ class AddVideoModal extends Modal {
         statusSelect.createEl("option", { text: "To Watch (未視聴)", value: "To Watch" });
         statusSelect.createEl("option", { text: "Watching (視聴中)", value: "Watching" });
         statusSelect.createEl("option", { text: "Watched (視聴完了)", value: "Watched" });
+        statusSelect.createEl("option", { text: "On Hold (保留中)", value: "On Hold" });
 
         // Rating Field
         const ratingGroup = form.createDiv({ cls: "vrm-field-group" });
@@ -968,6 +969,7 @@ class EditVideoModal extends Modal {
         statusSelect.createEl("option", { text: "To Watch (未視聴)", value: "To Watch" });
         statusSelect.createEl("option", { text: "Watching (視聴中)", value: "Watching" });
         statusSelect.createEl("option", { text: "Watched (視聴完了)", value: "Watched" });
+        statusSelect.createEl("option", { text: "On Hold (保留中)", value: "On Hold" });
         statusSelect.value = this.initialData.status || "To Watch";
 
         // Rating Field
@@ -2414,6 +2416,7 @@ updated: ${now}
         const toWatchCount = videos.filter(v => v.status === "To Watch").length;
         const watchingCount = videos.filter(v => v.status === "Watching").length;
         const watchedCount = videos.filter(v => v.status === "Watched").length;
+        const onHoldCount = videos.filter(v => v.status === "On Hold").length;
 
         const movieCount = videos.filter(v => v.type === "Movie").length;
         const dramaCount = videos.filter(v => v.type === "Drama").length;
@@ -2528,6 +2531,7 @@ updated: ${formatDateTime(new Date())}
 | **⚪ To Watch** | \`${toWatchCount}\` | - | - | - |
 | **🟡 Watching** | \`${watchingCount}\` | - | - | - |
 | **🟢 Watched** | \`${watchedCount}\` | - | - | - |
+| **⏸️ On Hold** | \`${onHoldCount}\` | - | - | - |
 ` + retroMd;
 
         if (renderedVideos.length === 0) {
@@ -2545,6 +2549,8 @@ updated: ${formatDateTime(new Date())}
                     statusBadge = `<span class="vrm-badge vrm-badge-watching">Watching</span>`;
                 } else if (v.status === "Watched") {
                     statusBadge = `<span class="vrm-badge vrm-badge-watched">Watched</span>`;
+                } else if (v.status === "On Hold") {
+                    statusBadge = `<span class="vrm-badge vrm-badge-on-hold">On Hold</span>`;
                 }
 
                 let typeBadge = "";
