@@ -540,3 +540,167 @@
     letter-spacing: 1px;
 }
 
+/* Sidebar Mode Selector UI */
+.vrm-sidebar-mode-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 0.75rem;
+}
+
+.vrm-sidebar-mode-btn {
+    flex: 1;
+    padding: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.vrm-sidebar-mode-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.vrm-sidebar-mode-btn.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+/* Retrospective view styling */
+.vrm-retro-stats-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.vrm-retro-stats-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.vrm-retro-stats-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.vrm-retro-stats-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-top: 4px;
+    color: var(--text-normal);
+}
+
+.vrm-retro-category-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 0.75rem;
+    background-color: var(--background-primary);
+    padding: 0.6rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+}
+
+.vrm-retro-category-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.vrm-retro-category-name {
+    color: var(--text-normal);
+}
+
+.vrm-retro-category-count {
+    color: var(--text-muted);
+}
+
+.vrm-retro-progress-bg {
+    height: 6px;
+    background-color: var(--background-secondary-alt);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.vrm-retro-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+    border-radius: 3px;
+}
+
+.vrm-retro-hall-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.vrm-retro-hall-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.vrm-retro-hall-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.vrm-retro-hall-title:hover {
+    text-decoration: underline;
+}
+
+.vrm-retro-hall-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.vrm-retro-hall-stars {
+    color: #f59e0b;
+    font-size: 0.85rem;
+}
+
+.vrm-retro-monthly-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--background-secondary-alt);
+    border-radius: 6px;
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+}
+
+.vrm-retro-monthly-month {
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.vrm-retro-monthly-count {
+    color: var(--interactive-accent);
+    font-weight: 700;
+}
+

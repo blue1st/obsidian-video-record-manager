@@ -1356,6 +1356,7 @@ const SIDEBAR_VIEW_TYPE = "video-watching-status-sidebar";
 class VideoStatusSidebarView extends ItemView {
     plugin: VideoRecordManager;
     activeType: string = "All";
+    activeMode: "tracker" | "retrospective" = "tracker";
 
     constructor(leaf: WorkspaceLeaf, plugin: VideoRecordManager) {
         super(leaf);
@@ -1404,6 +1405,10 @@ class VideoStatusSidebarView extends ItemView {
             type: "Movie" | "Drama" | "Anime";
             status: string;
             rating: number;
+            genre: string;
+            subgenre: string;
+            endDate: string;
+            updated: string;
         }
 
         const videos: VideoItem[] = [];
@@ -1430,139 +1435,285 @@ class VideoStatusSidebarView extends ItemView {
                     director: frontmatter.director || "",
                     type: type as "Movie" | "Drama" | "Anime",
                     status: status,
-                    rating: frontmatter.rating || 0
+                    rating: frontmatter.rating || 0,
+                    genre: frontmatter.genre || "",
+                    subgenre: frontmatter.subgenre || "",
+                    endDate: frontmatter.end_date || "",
+                    updated: frontmatter.updated || ""
                 });
             }
         }
 
         titleEl.setText(`🎬 Video Tracker (${videos.length})`);
 
-        // Type tabs bar
-        const tabsContainer = container.createDiv({ cls: "vrm-sidebar-tabs" });
-        const tabTypes = ["All", "Movie", "Drama", "Anime"];
-        tabTypes.forEach(t => {
-            const tab = tabsContainer.createEl("button", { text: t, cls: `vrm-sidebar-tab ${this.activeType === t ? "is-active" : ""}` });
-            tab.addEventListener("click", () => {
-                this.activeType = t;
-                this.render();
-            });
+        // Mode switch buttons
+        const modeSelector = container.createDiv({ cls: "vrm-sidebar-mode-selector" });
+        const trackerBtn = modeSelector.createEl("button", { 
+            text: "📝 Tracker", 
+            cls: `vrm-sidebar-mode-btn ${this.activeMode === "tracker" ? "is-active" : ""}` 
+        });
+        trackerBtn.addEventListener("click", () => {
+            this.activeMode = "tracker";
+            this.render();
+        });
+        const retroBtn = modeSelector.createEl("button", { 
+            text: "✨ Retro", 
+            cls: `vrm-sidebar-mode-btn ${this.activeMode === "retrospective" ? "is-active" : ""}` 
+        });
+        retroBtn.addEventListener("click", () => {
+            this.activeMode = "retrospective";
+            this.render();
         });
 
-        // Filter videos based on active category
-        const filteredVideos = this.activeType === "All"
-            ? videos
-            : videos.filter(v => v.type === this.activeType);
+        if (this.activeMode === "tracker") {
+            // Type tabs bar
+            const tabsContainer = container.createDiv({ cls: "vrm-sidebar-tabs" });
+            const tabTypes = ["All", "Movie", "Drama", "Anime"];
+            tabTypes.forEach(t => {
+                const tab = tabsContainer.createEl("button", { text: t, cls: `vrm-sidebar-tab ${this.activeType === t ? "is-active" : ""}` });
+                tab.addEventListener("click", () => {
+                    this.activeType = t;
+                    this.render();
+                });
+            });
 
-        const toWatch = filteredVideos.filter(v => v.status === "To Watch").length;
-        const watching = filteredVideos.filter(v => v.status === "Watching").length;
-        const watched = filteredVideos.filter(v => v.status === "Watched").length;
+            // Filter videos based on active category
+            const filteredVideos = this.activeType === "All"
+                ? videos
+                : videos.filter(v => v.type === this.activeType);
 
-        // Stats Row
-        const statsRow = container.createDiv({ cls: "vrm-sidebar-stats" });
+            const toWatch = filteredVideos.filter(v => v.status === "To Watch").length;
+            const watching = filteredVideos.filter(v => v.status === "Watching").length;
+            const watched = filteredVideos.filter(v => v.status === "Watched").length;
 
-        const toWatchCard = statsRow.createDiv({ cls: "vrm-sidebar-stat-card" });
-        toWatchCard.createDiv({ cls: "vrm-sidebar-stat-label", text: "To Watch" });
-        toWatchCard.createDiv({ cls: "vrm-sidebar-stat-count", text: String(toWatch) });
+            // Stats Row
+            const statsRow = container.createDiv({ cls: "vrm-sidebar-stats" });
 
-        const watchingCard = statsRow.createDiv({ cls: "vrm-sidebar-stat-card" });
-        watchingCard.createDiv({ cls: "vrm-sidebar-stat-label", text: "Watching" });
-        watchingCard.createDiv({ cls: "vrm-sidebar-stat-count", text: String(watching) });
+            const toWatchCard = statsRow.createDiv({ cls: "vrm-sidebar-stat-card" });
+            toWatchCard.createDiv({ cls: "vrm-sidebar-stat-label", text: "To Watch" });
+            toWatchCard.createDiv({ cls: "vrm-sidebar-stat-count", text: String(toWatch) });
 
-        const watchedCard = statsRow.createDiv({ cls: "vrm-sidebar-stat-card" });
-        watchedCard.createDiv({ cls: "vrm-sidebar-stat-label", text: "Watched" });
-        watchedCard.createDiv({ cls: "vrm-sidebar-stat-count", text: String(watched) });
+            const watchingCard = statsRow.createDiv({ cls: "vrm-sidebar-stat-card" });
+            watchingCard.createDiv({ cls: "vrm-sidebar-stat-label", text: "Watching" });
+            watchingCard.createDiv({ cls: "vrm-sidebar-stat-count", text: String(watching) });
 
-        // Helper function to render sections (Watching, To Watch, Watched)
-        const renderVideoList = (itemsList: VideoItem[], sectionTitle: string, emptyMsg: string) => {
-            container.createEl("h4", { text: sectionTitle, cls: "vrm-sidebar-section-title" });
-            if (itemsList.length === 0) {
-                container.createDiv({ cls: "vrm-sidebar-empty-text", text: emptyMsg });
-            } else {
-                const list = container.createDiv({ cls: "vrm-sidebar-list" });
-                
-                // Sort by mtime descending
-                itemsList.sort((a, b) => b.file.stat.mtime - a.file.stat.mtime);
+            const watchedCard = statsRow.createDiv({ cls: "vrm-sidebar-stat-card" });
+            watchedCard.createDiv({ cls: "vrm-sidebar-stat-label", text: "Watched" });
+            watchedCard.createDiv({ cls: "vrm-sidebar-stat-count", text: String(watched) });
 
-                itemsList.forEach(item => {
-                    const card = list.createDiv({ cls: "vrm-sidebar-item" });
-
-                    const cardTop = card.createDiv({ cls: "vrm-sidebar-item-top" });
-                    const infoContainer = cardTop.createDiv({ cls: "vrm-sidebar-item-info" });
+            // Helper function to render sections (Watching, To Watch, Watched)
+            const renderVideoList = (itemsList: VideoItem[], sectionTitle: string, emptyMsg: string) => {
+                container.createEl("h4", { text: sectionTitle, cls: "vrm-sidebar-section-title" });
+                if (itemsList.length === 0) {
+                    container.createDiv({ cls: "vrm-sidebar-empty-text", text: emptyMsg });
+                } else {
+                    const list = container.createDiv({ cls: "vrm-sidebar-list" });
                     
-                    // Clickable Title to Open File
+                    // Sort by mtime descending
+                    itemsList.sort((a, b) => b.file.stat.mtime - a.file.stat.mtime);
+
+                    itemsList.forEach(item => {
+                        const card = list.createDiv({ cls: "vrm-sidebar-item" });
+
+                        const cardTop = card.createDiv({ cls: "vrm-sidebar-item-top" });
+                        const infoContainer = cardTop.createDiv({ cls: "vrm-sidebar-item-info" });
+                        
+                        // Clickable Title to Open File
+                        const titleLink = infoContainer.createEl("a", { 
+                            cls: "vrm-sidebar-item-title", 
+                            text: item.title 
+                        });
+                        titleLink.addEventListener("click", (e) => {
+                            e.preventDefault();
+                            this.app.workspace.getLeaf(false).openFile(item.file);
+                        });
+
+                        if (item.director) {
+                            infoContainer.createDiv({ cls: "vrm-sidebar-item-director", text: `By: ${item.director}` });
+                        }
+
+                        // Show Rating
+                        if (item.rating > 0) {
+                            infoContainer.createDiv({ 
+                                text: "★".repeat(item.rating), 
+                                cls: "vrm-stars-display" 
+                            });
+                        }
+
+                        // Show S/E or Movie metadata
+                        const metaRow = infoContainer.createDiv({ cls: "vrm-sidebar-item-meta" });
+                        
+                        // Type Badge
+                        const typeClass = `vrm-badge-${item.type.toLowerCase()}`;
+                        metaRow.createSpan({ cls: `vrm-badge ${typeClass}`, text: item.type });
+
+                        if (item.type !== "Movie" && (item.season || item.episode)) {
+                            const sStr = item.season ? `S${sanitizeNumberStr(item.season)}` : "";
+                            const eStr = item.episode ? `E${sanitizeNumberStr(item.episode)}` : "";
+                            metaRow.createSpan({ 
+                                cls: "vrm-badge vrm-badge-to-watch", 
+                                text: `${sStr}${eStr}`.trim() 
+                            });
+                        }
+
+                        // Action Row
+                        const actionsRow = card.createDiv({ cls: "vrm-sidebar-item-actions" });
+
+                        // Watched Checkbox Button
+                        let btnText = "✓ Watched";
+                        if (item.status === "To Watch") btnText = "🍿 Watch";
+                        else if (item.status === "Watched") btnText = "🔄 Cycle";
+
+                        const watchedBtn = actionsRow.createEl("button", {
+                            cls: "vrm-sidebar-item-btn vrm-sidebar-item-btn-primary",
+                            text: btnText
+                        });
+                        watchedBtn.addEventListener("click", async () => {
+                            await this.plugin.toggleBookStatus(item.file, "Watched");
+                            new Notice(`Status cycled for: ${item.title}`);
+                        });
+
+                        // Next Episode +1 Shortcut Button (Drama & Anime only, if in Watching state)
+                        if (item.status === "Watching" && item.type !== "Movie" && item.series) {
+                            const nextEpBtn = actionsRow.createEl("button", {
+                                cls: "vrm-sidebar-item-btn",
+                                text: "⏭️ Next Ep"
+                            });
+                            nextEpBtn.title = "Mark as Watched and create next episode note automatically";
+                            nextEpBtn.addEventListener("click", async () => {
+                                await this.plugin.createAndOpenNextEpisode(item);
+                            });
+                        }
+                    });
+                }
+            };
+
+            // Render Directory Lists
+            renderVideoList(filteredVideos.filter(v => v.status === "Watching"), "🍿 Currently Watching", "No active videos. Go grab some popcorn! 🍿");
+            renderVideoList(filteredVideos.filter(v => v.status === "To Watch"), "⚪ To Watch", "No bookmarked videos.");
+            renderVideoList(filteredVideos.filter(v => v.status === "Watched"), "🟢 Watched Logs", "No completed views yet.");
+        } else {
+            // Compute retrospective stats
+            const totalWatched = videos.filter(v => v.status === "Watched").length;
+            const ratedVideos = videos.filter(v => v.rating > 0);
+            const avgRating = ratedVideos.length > 0 
+                ? ratedVideos.reduce((sum, v) => sum + v.rating, 0) / ratedVideos.length 
+                : 0;
+
+            // Rendering stats summary cards
+            const statsSummary = container.createDiv({ cls: "vrm-retro-stats-summary" });
+            
+            const addRetroStat = (label: string, value: string) => {
+                const card = statsSummary.createDiv({ cls: "vrm-retro-stats-card" });
+                card.createDiv({ text: label, cls: "vrm-retro-stats-label" });
+                card.createDiv({ text: value, cls: "vrm-retro-stats-value" });
+            };
+
+            addRetroStat("Total Logs", String(videos.length));
+            addRetroStat("🟢 Watched", String(totalWatched));
+            addRetroStat("⭐ Avg Rating", avgRating > 0 ? `${avgRating.toFixed(1)} ★` : "-");
+
+            // --- Section 1: Favorite Genres ---
+            container.createEl("h4", { text: "🏷️ Favorite Genres", cls: "vrm-sidebar-section-title" });
+            
+            const genreMap = new Map<string, { total: number; ratingSum: number; ratingCount: number }>();
+            videos.forEach(v => {
+                const g = v.genre.trim() || "Uncategorized";
+                if (!genreMap.has(g)) {
+                    genreMap.set(g, { total: 0, ratingSum: 0, ratingCount: 0 });
+                }
+                const stat = genreMap.get(g)!;
+                stat.total++;
+                if (v.rating > 0) {
+                    stat.ratingSum += v.rating;
+                    stat.ratingCount++;
+                }
+            });
+
+            const genreStats = Array.from(genreMap.entries()).map(([name, stat]) => {
+                const avg = stat.ratingCount > 0 ? stat.ratingSum / stat.ratingCount : 0;
+                return { name, total: stat.total, avg };
+            }).sort((a, b) => b.total - a.total); // Sort by item count descending
+
+            if (genreStats.length === 0) {
+                container.createDiv({ text: "No genres recorded.", cls: "vrm-sidebar-empty-text" });
+            } else {
+                const listContainer = container.createDiv({ cls: "vrm-sidebar-list" });
+                genreStats.slice(0, 5).forEach(g => {
+                    const item = listContainer.createDiv({ cls: "vrm-retro-category-item" });
+                    
+                    const labelDiv = item.createDiv({ cls: "vrm-retro-category-label" });
+                    labelDiv.createSpan({ text: g.name, cls: "vrm-retro-category-name" });
+                    
+                    const ratingText = g.avg > 0 ? `Avg: ${g.avg.toFixed(1)} ★` : "Unrated";
+                    labelDiv.createSpan({ text: `${g.total} items (${ratingText})`, cls: "vrm-retro-category-count" });
+                    
+                    const progressBg = item.createDiv({ cls: "vrm-retro-progress-bg" });
+                    const progressFill = progressBg.createDiv({ cls: "vrm-retro-progress-fill" });
+                    progressFill.style.width = g.avg > 0 ? `${(g.avg / 5) * 100}%` : "0%";
+                });
+            }
+
+            // --- Section 2: Hall of Fame (★4 and ★5) ---
+            container.createEl("h4", { text: "🏆 Hall of Fame", cls: "vrm-sidebar-section-title" });
+            
+            const hallOfFame = videos
+                .filter(v => v.rating >= 4)
+                .sort((a, b) => b.rating - a.rating);
+
+            if (hallOfFame.length === 0) {
+                container.createDiv({ text: "No videos rated ★4 or ★5 yet.", cls: "vrm-sidebar-empty-text" });
+            } else {
+                const listContainer = container.createDiv({ cls: "vrm-sidebar-list" });
+                hallOfFame.slice(0, 5).forEach(video => {
+                    const item = listContainer.createDiv({ cls: "vrm-retro-hall-item" });
+                    
+                    const infoContainer = item.createDiv({ cls: "vrm-retro-hall-info" });
                     const titleLink = infoContainer.createEl("a", { 
-                        cls: "vrm-sidebar-item-title", 
-                        text: item.title 
+                        cls: "vrm-retro-hall-title", 
+                        text: video.title 
                     });
                     titleLink.addEventListener("click", (e) => {
                         e.preventDefault();
-                        this.app.workspace.getLeaf(false).openFile(item.file);
+                        this.app.workspace.getLeaf(false).openFile(video.file);
                     });
-
-                    if (item.director) {
-                        infoContainer.createDiv({ cls: "vrm-sidebar-item-director", text: `By: ${item.director}` });
-                    }
-
-                    // Show Rating
-                    if (item.rating > 0) {
-                        infoContainer.createDiv({ 
-                            text: "★".repeat(item.rating), 
-                            cls: "vrm-stars-display" 
-                        });
-                    }
-
-                    // Show S/E or Movie metadata
-                    const metaRow = infoContainer.createDiv({ cls: "vrm-sidebar-item-meta" });
                     
-                    // Type Badge
-                    const typeClass = `vrm-badge-${item.type.toLowerCase()}`;
-                    metaRow.createSpan({ cls: `vrm-badge ${typeClass}`, text: item.type });
-
-                    if (item.type !== "Movie" && (item.season || item.episode)) {
-                        const sStr = item.season ? `S${sanitizeNumberStr(item.season)}` : "";
-                        const eStr = item.episode ? `E${sanitizeNumberStr(item.episode)}` : "";
-                        metaRow.createSpan({ 
-                            cls: "vrm-badge vrm-badge-to-watch", 
-                            text: `${sStr}${eStr}`.trim() 
-                        });
-                    }
-
-                    // Action Row
-                    const actionsRow = card.createDiv({ cls: "vrm-sidebar-item-actions" });
-
-                    // Watched Checkbox Button
-                    let btnText = "✓ Watched";
-                    if (item.status === "To Watch") btnText = "🍿 Watch";
-                    else if (item.status === "Watched") btnText = "🔄 Cycle";
-
-                    const watchedBtn = actionsRow.createEl("button", {
-                        cls: "vrm-sidebar-item-btn vrm-sidebar-item-btn-primary",
-                        text: btnText
-                    });
-                    watchedBtn.addEventListener("click", async () => {
-                        await this.plugin.toggleBookStatus(item.file, "Watched");
-                        new Notice(`Status cycled for: ${item.title}`);
-                    });
-
-                    // Next Episode +1 Shortcut Button (Drama & Anime only, if in Watching state)
-                    if (item.status === "Watching" && item.type !== "Movie" && item.series) {
-                        const nextEpBtn = actionsRow.createEl("button", {
-                            cls: "vrm-sidebar-item-btn",
-                            text: "⏭️ Next Ep"
-                        });
-                        nextEpBtn.title = "Mark as Watched and create next episode note automatically";
-                        nextEpBtn.addEventListener("click", async () => {
-                            await this.plugin.createAndOpenNextEpisode(item);
-                        });
-                    }
+                    let metaText = `Type: ${video.type}`;
+                    if (video.director) metaText += ` | By: ${video.director}`;
+                    infoContainer.createDiv({ text: metaText, cls: "vrm-retro-hall-meta" });
+                    
+                    item.createDiv({ text: "★".repeat(video.rating), cls: "vrm-retro-hall-stars" });
                 });
             }
-        };
 
-        // Render Directory Lists
-        renderVideoList(filteredVideos.filter(v => v.status === "Watching"), "🍿 Currently Watching", "No active videos. Go grab some popcorn! 🍿");
-        renderVideoList(filteredVideos.filter(v => v.status === "To Watch"), "⚪ To Watch", "No bookmarked videos.");
-        renderVideoList(filteredVideos.filter(v => v.status === "Watched"), "🟢 Watched Logs", "No completed views yet.");
+            // --- Section 3: Monthly Log ---
+            container.createEl("h4", { text: "📅 Monthly Achievements", cls: "vrm-sidebar-section-title" });
+            
+            const monthlyMap = new Map<string, number>();
+            videos.filter(v => v.status === "Watched").forEach(v => {
+                let month = "Unknown";
+                if (v.endDate) {
+                    month = v.endDate.substring(0, 7); // "YYYY-MM"
+                } else if (v.updated) {
+                    month = v.updated.substring(0, 7); // "YYYY-MM"
+                }
+                monthlyMap.set(month, (monthlyMap.get(month) || 0) + 1);
+            });
+
+            const monthlyStats = Array.from(monthlyMap.entries())
+                .sort((a, b) => b[0].localeCompare(a[0])); // Sort descending by month
+
+            if (monthlyStats.length === 0) {
+                container.createDiv({ text: "No completed videos recorded yet.", cls: "vrm-sidebar-empty-text" });
+            } else {
+                const listContainer = container.createDiv({ cls: "vrm-sidebar-list" });
+                monthlyStats.slice(0, 5).forEach(([month, count]) => {
+                    const item = listContainer.createDiv({ cls: "vrm-retro-monthly-item" });
+                    item.createDiv({ text: month, cls: "vrm-retro-monthly-month" });
+                    item.createDiv({ text: `${count} views`, cls: "vrm-retro-monthly-count" });
+                });
+            }
+        }
 
         // Section Title: Quick Actions
         container.createEl("h4", { text: "⚡ Quick Utilities", cls: "vrm-sidebar-section-title" });
@@ -2284,6 +2435,79 @@ updated: ${now}
         }
 
         // Build Markdown Dashboard Document
+        // --- Retro Analytics Sections ---
+        let retroMd = "\n---\n\n### 📊 振り返り分析 (Retrospective Analytics)\n\n";
+        
+        // 1. Genre stats
+        retroMd += "#### 🏷️ ジャンル別集計\n";
+        retroMd += "| ジャンル | 視聴完了数 / 総数 | 平均評価 | レーティング進捗 |\n";
+        retroMd += "| :--- | :---: | :---: | :--- |\n";
+        
+        const genreMap = new Map<string, { total: number; watched: number; ratingSum: number; ratingCount: number }>();
+        for (const v of videos) {
+            const g = v.genre.trim() || "未設定";
+            if (!genreMap.has(g)) {
+                genreMap.set(g, { total: 0, watched: 0, ratingSum: 0, ratingCount: 0 });
+            }
+            const stat = genreMap.get(g)!;
+            stat.total++;
+            if (v.status === "Watched") {
+                stat.watched++;
+            }
+            if (v.rating > 0) {
+                stat.ratingSum += v.rating;
+                stat.ratingCount++;
+            }
+        }
+        
+        const genreStats = Array.from(genreMap.entries()).map(([name, stat]) => {
+            const avgRating = stat.ratingCount > 0 ? stat.ratingSum / stat.ratingCount : 0;
+            return { name, ...stat, avgRating };
+        }).sort((a, b) => b.total - a.total);
+        
+        for (const g of genreStats) {
+            const ratingStars = g.avgRating > 0 ? "★" + g.avgRating.toFixed(1) : "-";
+            const barLength = 10;
+            const filledLength = Math.round((g.avgRating / 5) * barLength);
+            const barStr = "█".repeat(filledLength) + "░".repeat(barLength - filledLength);
+            const pctStr = `${Math.round((g.avgRating / 5) * 100)}%`;
+            const visualBar = g.avgRating > 0 ? `\`${barStr}\` (${pctStr})` : "-";
+            
+            retroMd += `| ${g.name} | ${g.watched} / ${g.total} | ${ratingStars} | ${visualBar} |\n`;
+        }
+        retroMd += "\n";
+        
+        // 2. Hall of Fame (★4 & ★5)
+        retroMd += "#### 🏆 殿堂入り (★4以上のおすすめ作品)\n";
+        retroMd += "| 作品名 | タイプ | 監督 / シリーズ | 評価 | 視聴日 |\n";
+        retroMd += "| :--- | :--- | :--- | :---: | :--- |\n";
+        
+        const hallOfFame = videos
+            .filter(v => v.rating >= 4)
+            .sort((a, b) => {
+                if (b.rating !== a.rating) {
+                    return b.rating - a.rating;
+                }
+                const aTime = a.endDate ? Date.parse(a.endDate) : a.updatedParsed;
+                const bTime = b.endDate ? Date.parse(b.endDate) : b.updatedParsed;
+                return bTime - aTime;
+            });
+            
+        if (hallOfFame.length === 0) {
+            retroMd += "| - | - | - | - | - |\n";
+        } else {
+            for (const v of hallOfFame) {
+                const fileLink = `[[${v.file.path}\\|${v.title}]]`;
+                const ratingStars = "★".repeat(v.rating);
+                let metaInfo = v.director;
+                if (v.type !== "Movie" && v.series) {
+                    metaInfo = `${v.series} ${v.season ? `S${v.season}` : ""}${v.episode ? `E${v.episode}` : ""}`.trim();
+                }
+                retroMd += `| ${fileLink} | ${v.type} | ${metaInfo || "-"} | ${ratingStars} | ${v.endDate || "-"} |\n`;
+            }
+        }
+        retroMd += "\n---\n\n## 🍿 Active Watching & Library Directory\n\n| Video Title | Type | Series / Episode Info | Status | Genre | Director | Rating | Last Updated |\n| :--- | :---: | :--- | :---: | :--- | :--- | :---: | :---: |\n";
+
         let md = `---
 title: "Master Video List"
 status: "Dashboard"
@@ -2304,14 +2528,7 @@ updated: ${formatDateTime(new Date())}
 | **⚪ To Watch** | \`${toWatchCount}\` | - | - | - |
 | **🟡 Watching** | \`${watchingCount}\` | - | - | - |
 | **🟢 Watched** | \`${watchedCount}\` | - | - | - |
-
----
-
-## 🍿 Active Watching & Library Directory
-
-| Video Title | Type | Series / Episode Info | Status | Genre | Director | Rating | Last Updated |
-| :--- | :---: | :--- | :---: | :--- | :--- | :---: | :---: |
-`;
+` + retroMd;
 
         if (renderedVideos.length === 0) {
             md += `| *No videos logs in list* | | | | | | | |\n`;
