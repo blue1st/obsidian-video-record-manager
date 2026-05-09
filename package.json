@@ -1,6 +1,6 @@
 {
   "name": "video-record-manager",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "A seamless video status, watching notes, and review manager for Obsidian (Movies, Dramas, Anime).",
   "main": "main.js",
   "scripts": {
