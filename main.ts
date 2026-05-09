@@ -83,9 +83,8 @@ class AddVideoModal extends Modal {
             if (!frontmatter) continue;
 
             const isInVideosFolder = file.path.startsWith("Videos/");
-            const hasStatus = "status" in frontmatter;
 
-            if (isInVideosFolder || hasStatus) {
+            if (isInVideosFolder) {
                 const director = frontmatter.director || "";
                 const series = frontmatter.series || "";
                 const season = frontmatter.season || "";
@@ -747,9 +746,8 @@ class EditVideoModal extends Modal {
             if (!frontmatter) continue;
 
             const isInVideosFolder = file.path.startsWith("Videos/");
-            const hasStatus = "status" in frontmatter;
 
-            if (isInVideosFolder || hasStatus) {
+            if (isInVideosFolder) {
                 const director = frontmatter.director || "";
                 const series = frontmatter.series || "";
                 const season = frontmatter.season || "";
@@ -1359,9 +1357,8 @@ class VideoStatusSidebarView extends ItemView {
             if (!frontmatter) continue;
 
             const isInVideosFolder = file.path.startsWith("Videos/");
-            const hasStatus = "status" in frontmatter;
 
-            if (isInVideosFolder || hasStatus) {
+            if (isInVideosFolder) {
                 const status = frontmatter.status || "To Watch";
                 const type = frontmatter.type || "Movie";
                 total++;
@@ -1602,10 +1599,8 @@ export default class VideoRecordManager extends Plugin {
                 if (!this.settings.enableAutoUpdate) return;
                 if (file.path === "Videos/Master Video List.md") return;
                 const isInVideosFolder = file.path.startsWith("Videos/");
-                const cache = this.app.metadataCache.getFileCache(file);
-                const hasStatus = cache?.frontmatter && "status" in cache.frontmatter;
 
-                if (isInVideosFolder || hasStatus) {
+                if (isInVideosFolder) {
                     await this.updateMasterVideoList(false);
                 }
             })
@@ -2101,9 +2096,8 @@ updated: ${now}
             const frontmatter = cache?.frontmatter;
 
             const isInVideosFolder = file.path.startsWith("Videos/");
-            const hasStatus = frontmatter && "status" in frontmatter;
 
-            if (isInVideosFolder || hasStatus) {
+            if (isInVideosFolder) {
                 const status = frontmatter?.status || "To Watch";
                 const type = (frontmatter?.type || "Movie") as "Movie" | "Drama" | "Anime";
                 const director = frontmatter?.director || "Unknown";
