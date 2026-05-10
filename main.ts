@@ -1286,6 +1286,100 @@ class EditVideoModal extends Modal {
     }
 }
 
+// Modal to change status and rating of a video
+class StatusRatingModal extends Modal {
+    file: TFile;
+    initialStatus: string;
+    initialRating: number;
+    onSubmit: (status: string, rating: number) => void;
+
+    constructor(app: App, file: TFile, initialStatus: string, initialRating: number, onSubmit: (status: string, rating: number) => void) {
+        super(app);
+        this.file = file;
+        this.initialStatus = initialStatus;
+        this.initialRating = initialRating;
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.addClass("vrm-modal");
+
+        contentEl.createEl("h2", { text: `Update Status & Rating`, cls: "vrm-modal-title" });
+        contentEl.createEl("p", { text: this.file.basename, cls: "vrm-modal-subtitle" });
+
+        const form = contentEl.createDiv({ cls: "vrm-form" });
+
+        // Status Field
+        const statusGroup = form.createDiv({ cls: "vrm-field-group" });
+        statusGroup.createEl("label", { text: "Watching Status" });
+        const statusSelect = statusGroup.createEl("select", { cls: "vrm-select" });
+        const statuses = ["To Watch", "Watching", "Watched", "On Hold"];
+        statuses.forEach(status => {
+            const option = statusSelect.createEl("option", { text: status, value: status });
+            if (status === this.initialStatus) {
+                option.selected = true;
+            }
+        });
+
+        // Rating Field
+        const ratingGroup = form.createDiv({ cls: "vrm-field-group" });
+        ratingGroup.createEl("label", { text: "Rating" });
+        const ratingInputContainer = ratingGroup.createDiv({ cls: "vrm-rating-input" });
+        let selectedRating = this.initialRating;
+        const stars: HTMLSpanElement[] = [];
+        for (let i = 1; i <= 5; i++) {
+            const star = ratingInputContainer.createSpan({ text: "★", cls: "vrm-star" });
+            star.addEventListener("click", () => {
+                if (selectedRating === i) {
+                    selectedRating = 0; // Toggle off if clicked again
+                } else {
+                    selectedRating = i;
+                }
+                updateStarsDisplay();
+            });
+            stars.push(star);
+        }
+        const updateStarsDisplay = () => {
+            stars.forEach((star, idx) => {
+                if (idx < selectedRating) {
+                    star.addClass("is-selected");
+                } else {
+                    star.removeClass("is-selected");
+                }
+            });
+        };
+        updateStarsDisplay();
+
+        // Action Buttons
+        const buttonsContainer = form.createDiv({ cls: "vrm-buttons" });
+
+        const cancelButton = buttonsContainer.createEl("button", {
+            text: "Cancel",
+            cls: "vrm-btn vrm-btn-secondary",
+            type: "button"
+        });
+        cancelButton.addEventListener("click", () => this.close());
+
+        const submitButton = buttonsContainer.createEl("button", {
+            text: "Update",
+            cls: "vrm-btn vrm-btn-primary",
+            type: "submit"
+        });
+
+        submitButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.close();
+            this.onSubmit(statusSelect.value, selectedRating);
+        });
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
+    }
+}
+
 // 2x2 Grid Control Panel Class
 class QuickActionModal extends Modal {
     plugin: VideoRecordManager;
@@ -1325,11 +1419,11 @@ class QuickActionModal extends Modal {
             this.plugin.openEditVideoModalOfCurrentFile();
         });
 
-        // 3. Toggle Watching Status
+        // 3. Change Status/Rating
         const toggleCard = grid.createDiv({ cls: "vrm-quick-menu-card" });
         toggleCard.createDiv({ cls: "vrm-quick-menu-icon", text: "🔄" });
-        toggleCard.createDiv({ cls: "vrm-quick-menu-title", text: "Toggle Status" });
-        toggleCard.createDiv({ cls: "vrm-quick-menu-desc", text: "Cycle: To Watch ➡️ Watching ➡️ Watched" });
+        toggleCard.createDiv({ cls: "vrm-quick-menu-title", text: "Change Status/Rating" });
+        toggleCard.createDiv({ cls: "vrm-quick-menu-desc", text: "Update watching status and star rating" });
         toggleCard.addEventListener("click", async () => {
             this.close();
             await this.plugin.toggleCurrentVideoStatus();
@@ -1561,18 +1655,13 @@ class VideoStatusSidebarView extends ItemView {
                         // Action Row
                         const actionsRow = card.createDiv({ cls: "vrm-sidebar-item-actions" });
 
-                        // Watched Checkbox Button
-                        let btnText = "✓ Watched";
-                        if (item.status === "To Watch") btnText = "🍿 Watch";
-                        else if (item.status === "Watched") btnText = "🔄 Cycle";
-
+                        // Status/Rating Update Button
                         const watchedBtn = actionsRow.createEl("button", {
                             cls: "vrm-sidebar-item-btn vrm-sidebar-item-btn-primary",
-                            text: btnText
+                            text: "⚙ Update"
                         });
                         watchedBtn.addEventListener("click", async () => {
-                            await this.plugin.toggleBookStatus(item.file, "Watched");
-                            new Notice(`Status cycled for: ${item.title}`);
+                            await this.plugin.toggleBookStatus(item.file);
                         });
 
                         // Next Episode +1 Shortcut Button (Drama & Anime only, if in Watching state)
@@ -1794,7 +1883,7 @@ export default class VideoRecordManager extends Plugin {
 
         this.addCommand({
             id: "toggle-video-status",
-            name: "Toggle Video Status",
+            name: "Change Current Video Status/Rating",
             callback: async () => {
                 await this.toggleCurrentVideoStatus();
             }
@@ -1819,7 +1908,7 @@ export default class VideoRecordManager extends Plugin {
                 if (isInVideosFolder) {
                     menu.addItem((item) => {
                         item
-                            .setTitle("Toggle Video Status")
+                            .setTitle("Change Status/Rating")
                             .setIcon("video")
                             .onClick(async () => {
                                 await this.toggleBookStatus(file);
@@ -2139,7 +2228,7 @@ updated: ${now}
         }).open();
     }
 
-    // Helper to toggle video status (circular sequence)
+    // Opens a popup to change status and rating of a specific file
     async toggleBookStatus(file: TFile, forcedStatus?: string) {
         const cache = this.app.metadataCache.getFileCache(file);
         const frontmatter = cache?.frontmatter;
@@ -2149,84 +2238,87 @@ updated: ${now}
         }
 
         const currentStatus = frontmatter.status || "To Watch";
-        let nextStatus = "To Watch";
+        const currentRating = Number(frontmatter.rating) || 0;
+        const initialStatus = forcedStatus || currentStatus;
 
-        if (forcedStatus) {
-            nextStatus = forcedStatus;
-        } else {
-            if (currentStatus === "To Watch") nextStatus = "Watching";
-            else if (currentStatus === "Watching") nextStatus = "Watched";
-            else nextStatus = "To Watch";
-        }
+        new StatusRatingModal(this.app, file, initialStatus, currentRating, async (status, rating) => {
+            // Update frontmatter content
+            let content = await this.app.vault.read(file);
+            const frontmatterRegex = /^---([\s\S]*?)---/;
+            const match = content.match(frontmatterRegex);
 
-        // Update frontmatter content
-        let content = await this.app.vault.read(file);
-        const frontmatterRegex = /^---([\s\S]*?)---/;
-        const match = content.match(frontmatterRegex);
-
-        if (!match) {
-            new Notice("Error: Invalid note frontmatter.");
-            return;
-        }
-
-        const rawFrontmatter = match[1];
-        const lines = rawFrontmatter.split("\n");
-        const preservedLines: string[] = [];
-        let statusUpdated = false;
-        let endDateUpdated = false;
-
-        for (const line of lines) {
-            if (!line.trim()) continue;
-            const idx = line.indexOf(":");
-            if (idx === -1) {
-                preservedLines.push(line);
-                continue;
+            if (!match) {
+                new Notice("Error: Invalid note frontmatter.");
+                return;
             }
 
-            const key = line.substring(0, idx).trim();
-            if (key === "status") {
-                preservedLines.push(`status: "${nextStatus}"`);
-                statusUpdated = true;
-            } else if (key === "end_date") {
-                if (nextStatus === "Watched") {
-                    preservedLines.push(`end_date: "${formatDate(new Date())}"`);
-                } else {
-                    // Remove end_date if status is not Watched
+            const rawFrontmatter = match[1];
+            const lines = rawFrontmatter.split("\n");
+            const preservedLines: string[] = [];
+            let statusUpdated = false;
+            let ratingUpdated = false;
+            let endDateUpdated = false;
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                const idx = line.indexOf(":");
+                if (idx === -1) {
+                    preservedLines.push(line);
+                    continue;
                 }
-                endDateUpdated = true;
-            } else if (key === "updated") {
-                preservedLines.push(`updated: "${formatDateTime(new Date())}"`);
-            } else {
-                preservedLines.push(line);
+
+                const key = line.substring(0, idx).trim();
+                if (key === "status") {
+                    preservedLines.push(`status: "${status}"`);
+                    statusUpdated = true;
+                } else if (key === "rating") {
+                    preservedLines.push(`rating: ${rating}`);
+                    ratingUpdated = true;
+                } else if (key === "end_date") {
+                    if (status === "Watched") {
+                        preservedLines.push(`end_date: "${formatDate(new Date())}"`);
+                    } else {
+                        // Remove end_date if status is not Watched
+                    }
+                    endDateUpdated = true;
+                } else if (key === "updated") {
+                    preservedLines.push(`updated: "${formatDateTime(new Date())}"`);
+                } else {
+                    preservedLines.push(line);
+                }
             }
-        }
 
-        if (!statusUpdated) {
-            preservedLines.push(`status: "${nextStatus}"`);
-        }
+            if (!statusUpdated) {
+                preservedLines.push(`status: "${status}"`);
+            }
 
-        if (!endDateUpdated && nextStatus === "Watched") {
-            preservedLines.push(`end_date: "${formatDate(new Date())}"`);
-        }
+            if (!ratingUpdated) {
+                preservedLines.push(`rating: ${rating}`);
+            }
 
-        // Always update updated property
-        if (!preservedLines.some(l => l.startsWith("updated:"))) {
-            preservedLines.push(`updated: "${formatDateTime(new Date())}"`);
-        }
+            if (!endDateUpdated && status === "Watched") {
+                preservedLines.push(`end_date: "${formatDate(new Date())}"`);
+            }
 
-        const reconstructedFrontmatter = `---\n${preservedLines.join("\n")}\n---`;
-        const updatedContent = content.replace(frontmatterRegex, reconstructedFrontmatter);
+            // Always update updated property
+            if (!preservedLines.some(l => l.startsWith("updated:"))) {
+                preservedLines.push(`updated: "${formatDateTime(new Date())}"`);
+            }
 
-        try {
-            await this.app.vault.modify(file, updatedContent);
-            new Notice(`"${file.basename}" status updated to: ${nextStatus}`);
+            const reconstructedFrontmatter = `---\n${preservedLines.join("\n")}\n---`;
+            const updatedContent = content.replace(frontmatterRegex, reconstructedFrontmatter);
 
-            // Auto-refresh in background
-            await this.updateMasterVideoList(false);
-        } catch (error) {
-            console.error("Failed to update video status frontmatter:", error);
-            new Notice("Error: Failed to update status.");
-        }
+            try {
+                await this.app.vault.modify(file, updatedContent);
+                new Notice(`"${file.basename}" updated: ${status} (${rating}★)`);
+
+                // Auto-refresh in background
+                await this.updateMasterVideoList(false);
+            } catch (error) {
+                console.error("Failed to update video status and rating frontmatter:", error);
+                new Notice("Error: Failed to save changes.");
+            }
+        }).open();
     }
 
     // Toggle current active file status
