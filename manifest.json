@@ -1,7 +1,7 @@
 {
 	"id": "video-record-manager",
 	"name": "Video Record Manager",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"minAppVersion": "0.15.0",
 	"description": "A seamless video status, watching notes, and review manager for Obsidian (Movies, Dramas, Anime).",
 	"author": "Antigravity",
