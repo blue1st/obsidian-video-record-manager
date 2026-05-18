@@ -1682,7 +1682,42 @@ class VideoStatusSidebarView extends ItemView {
             // Render Directory Lists
             renderVideoList(filteredVideos.filter(v => v.status === "Watching"), "🍿 Currently Watching", "No active videos. Go grab some popcorn! 🍿");
             renderVideoList(filteredVideos.filter(v => v.status === "To Watch"), "⚪ To Watch", "No bookmarked videos.");
-            renderVideoList(filteredVideos.filter(v => v.status === "Watched"), "🟢 Watched Logs", "No completed views yet.");
+            
+            const watchedVideosToRender = filteredVideos.filter(v => {
+                if (v.status !== "Watched") return false;
+                if (!this.plugin.settings.enableHideWatched) return true;
+
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const thresholdDays = this.plugin.settings.hideWatchedDays;
+
+                let finishDate: Date | null = null;
+                if (v.endDate) {
+                    const parts = v.endDate.split("-");
+                    if (parts.length === 3) {
+                        finishDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    }
+                }
+                
+                if (!finishDate && v.updated) {
+                    const datePart = String(v.updated).split(" ")[0];
+                    const parts = datePart.split("-");
+                    if (parts.length === 3) {
+                        finishDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    }
+                }
+
+                if (!finishDate) {
+                    const mtime = new Date(v.file.stat.mtime);
+                    finishDate = new Date(mtime.getFullYear(), mtime.getMonth(), mtime.getDate());
+                }
+
+                const diffDays = Math.floor((today.getTime() - finishDate.getTime()) / (24 * 60 * 60 * 1000));
+
+                return diffDays < thresholdDays;
+            });
+            
+            renderVideoList(watchedVideosToRender, "🟢 Watched Logs", "No completed views yet.");
         } else {
             // Compute retrospective stats
             const totalWatched = videos.filter(v => v.status === "Watched").length;
