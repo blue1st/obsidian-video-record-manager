@@ -2517,15 +2517,37 @@ updated: ${now}
         // Apply Archiving Hide Filter
         let renderedVideos = videos;
         if (this.settings.enableHideWatched) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const thresholdDays = this.settings.hideWatchedDays;
-            const thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
-            const now = Date.now();
 
             renderedVideos = videos.filter(v => {
-                if (v.status !== "Watched" || !v.endDate) return true;
-                const endParsed = Date.parse(v.endDate);
-                if (isNaN(endParsed)) return true;
-                return (now - endParsed) < thresholdMs;
+                if (v.status !== "Watched") return true;
+                
+                let finishDate: Date | null = null;
+                if (v.endDate) {
+                    const parts = v.endDate.split("-");
+                    if (parts.length === 3) {
+                        finishDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    }
+                }
+                
+                if (!finishDate && v.updated) {
+                    const datePart = String(v.updated).split(" ")[0];
+                    const parts = datePart.split("-");
+                    if (parts.length === 3) {
+                        finishDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    }
+                }
+
+                if (!finishDate) {
+                    const mtime = new Date(v.file.stat.mtime);
+                    finishDate = new Date(mtime.getFullYear(), mtime.getMonth(), mtime.getDate());
+                }
+
+                const diffDays = Math.floor((today.getTime() - finishDate.getTime()) / (24 * 60 * 60 * 1000));
+
+                return diffDays < thresholdDays;
             });
         }
 
